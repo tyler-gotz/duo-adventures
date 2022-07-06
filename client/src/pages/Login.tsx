@@ -1,14 +1,40 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Alert, Box, Button, Grid, PasswordInput, TextInput, Title, useMantineTheme } from '@mantine/core'
-import { useSelector } from 'react-redux'
-import { RootState } from '../redux/store'
+import { useDispatch, useSelector } from 'react-redux'
+import { AppDispatch, RootState } from '../redux/store'
 import { RequestState } from '../types/RequestState'
 import { AlertCircle } from 'tabler-icons-react'
+import { useForm, yupResolver } from '@mantine/form'
+import { loginSchema } from '../utils/validation'
+import { clearAuth, loginUser } from '../redux/slices/authSlice'
+import { useNavigate } from 'react-router-dom'
 
 const Login: React.FC = () => {
   const theme = useMantineTheme()
 
+  const dispatch = useDispatch<AppDispatch>()
   const registerState = useSelector<RootState, RequestState>((state) => state.auth.register)
+  const loginState = useSelector<RootState, RequestState>((state) => state.auth.login)
+
+  const navigate = useNavigate()
+
+  const loginForm = useForm({
+    initialValues: {
+      email: '',
+      password: ''
+    },
+    schema: yupResolver(loginSchema)
+  })
+
+  useEffect(() => {
+    if (loginState.success) {
+      navigate('/')
+    }
+    
+    return () => {
+      dispatch(clearAuth())
+    }
+  }, [navigate, loginState.success, dispatch])
 
   return (
     <Box
@@ -29,7 +55,14 @@ const Login: React.FC = () => {
           </Alert>
         )
       }
-      <form>
+      {
+        loginState.error !== false && (
+          <Alert icon={<AlertCircle size={16} />} title="Error Logging You In." mb={12} color="red">
+            {loginState.error}
+          </Alert>
+        )
+      }
+      <form onSubmit={loginForm.onSubmit((values) => dispatch(loginUser(values)))}>
         <Grid>
           <Grid.Col xs={12}>
             <Title 
@@ -47,7 +80,7 @@ const Login: React.FC = () => {
               placeholder="Enter Email Address..."
               type="email"
               autoComplete="username"
-            //   {...registerForm.getInputProps('email')} 
+              {...loginForm.getInputProps('email')} 
             />
           </Grid.Col>
           <Grid.Col sm={12}>
@@ -55,12 +88,12 @@ const Login: React.FC = () => {
               label="Password"
               placeholder="Enter Password..."
               autoComplete="current-password"
-            //   {...registerForm.getInputProps('confirmPassword')}
+              {...loginForm.getInputProps('password')}
             />
           </Grid.Col>
           <Grid.Col sm={12}>
             <Button
-            //   loading={registerState.loading}
+              loading={loginState.loading}
               fullWidth
               type="submit"
               variant="filled"
